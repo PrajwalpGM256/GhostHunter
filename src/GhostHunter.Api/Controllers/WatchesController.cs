@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using GhostHunter.Core.Entities;
 using GhostHunter.Core.Interfaces;
+using GhostHunter.Api.Extensions;
 
 namespace GhostHunter.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class WatchesController : ControllerBase
@@ -16,8 +19,9 @@ public class WatchesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<JobWatch>>> GetAll([FromQuery] int? userId)
+    public async Task<ActionResult<List<JobWatch>>> GetAll()
     {
+        var userId = User.GetUserId();
         return await _watchService.GetAllAsync(userId);
     }
 
@@ -26,13 +30,16 @@ public class WatchesController : ControllerBase
     {
         var watch = await _watchService.GetByIdAsync(id);
         if (watch == null) return NotFound();
+        if (watch.UserId != User.GetUserId()) return Forbid();
         return watch;
     }
 
     [HttpGet("active")]
     public async Task<ActionResult<List<JobWatch>>> GetActive()
     {
-        return await _watchService.GetActiveAsync();
+        var userId = User.GetUserId();
+        var watches = await _watchService.GetActiveAsync();
+        return watches.Where(w => w.UserId == userId).ToList();
     }
 
     [HttpPost]
@@ -40,7 +47,7 @@ public class WatchesController : ControllerBase
     {
         var watch = new JobWatch
         {
-            UserId = request.UserId,
+            UserId = User.GetUserId(),
             Name = request.Name,
             Url = request.Url,
             JobTitleSelector = request.JobTitleSelector,
@@ -62,6 +69,7 @@ public class WatchesController : ControllerBase
     {
         var watch = await _watchService.GetByIdAsync(id);
         if (watch == null) return NotFound();
+        if (watch.UserId != User.GetUserId()) return Forbid();
 
         watch.Name = request.Name;
         watch.Url = request.Url;
@@ -81,15 +89,17 @@ public class WatchesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var deleted = await _watchService.DeleteAsync(id);
-        if (!deleted) return NotFound();
+        var watch = await _watchService.GetByIdAsync(id);
+        if (watch == null) return NotFound();
+        if (watch.UserId != User.GetUserId()) return Forbid();
+
+        await _watchService.DeleteAsync(id);
         return NoContent();
     }
 }
 
 public class CreateWatchRequest
 {
-    public int UserId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Url { get; set; } = string.Empty;
     public string? JobTitleSelector { get; set; }

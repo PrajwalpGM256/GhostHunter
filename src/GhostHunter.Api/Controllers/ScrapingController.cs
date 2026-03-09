@@ -1,11 +1,14 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using GhostHunter.Core.Entities;
 using GhostHunter.Core.Interfaces;
+using GhostHunter.Api.Extensions;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace GhostHunter.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class ScrapingController : ControllerBase
@@ -43,6 +46,9 @@ public class ScrapingController : ControllerBase
         var jobWatch = await _watchService.GetByIdAsync(id);
         if (jobWatch == null)
             return NotFound($"JobWatch with ID {id} not found");
+
+        if (jobWatch.UserId != User.GetUserId())
+            return Forbid();
 
         if (!jobWatch.IsActive)
             return BadRequest("JobWatch is not active");
