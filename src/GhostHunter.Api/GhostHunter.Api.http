@@ -1,0 +1,6 @@
+@GhostHunter.Api_HostAddress = http://localhost:5069
+
+GET {{GhostHunter.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
