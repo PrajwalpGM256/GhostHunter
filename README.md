@@ -1,0 +1,2 @@
+# GhostHunter
+Job scraping service
