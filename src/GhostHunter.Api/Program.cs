@@ -5,11 +5,15 @@ using Microsoft.IdentityModel.Tokens;
 using GhostHunter.Infrastructure.Data;
 using GhostHunter.Core.Interfaces;
 using GhostHunter.Infrastructure.Services;
+using GhostHunter.Api.GraphQL;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddPooledDbContextFactory<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<AppDbContext>(sp =>
+    sp.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext());
 
 builder.Services.AddHttpClient<IScrapingService, ScrapingService>();
 builder.Services.AddScoped<IJobPostService, JobPostService>();
@@ -70,6 +74,16 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+    builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<Query>()
+    .AddMutationType<Mutation>()
+    .AddProjections()
+    .AddFiltering()
+    .AddSorting()
+    .RegisterDbContextFactory<AppDbContext>()
+    .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = true);
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -82,5 +96,6 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGraphQL();
 
 app.Run();
