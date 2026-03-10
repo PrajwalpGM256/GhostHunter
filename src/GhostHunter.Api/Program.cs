@@ -81,6 +81,7 @@ builder.Services.AddSwaggerGen(c =>
     .AddProjections()
     .AddFiltering()
     .AddSorting()
+    .AddAuthorization()
     .RegisterDbContextFactory<AppDbContext>()
     .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = true);
 

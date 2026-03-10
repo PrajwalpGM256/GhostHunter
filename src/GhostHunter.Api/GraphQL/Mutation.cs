@@ -1,10 +1,13 @@
 using GhostHunter.Infrastructure.Data;
 using GhostHunter.Core.Entities;
+using HotChocolate.Authorization;
+using System.Security.Claims;
 
 namespace GhostHunter.Api.GraphQL;
 
 public class Mutation
 {
+    [Authorize]
     public async Task<JobWatch> CreateWatch(
         string name,
         string url,
@@ -13,9 +16,11 @@ public class Mutation
         string? linkSelector,
         string? locationSelector,
         int checkIntervalMinutes,
-        int userId,
+        ClaimsPrincipal claimsPrincipal,
         AppDbContext context)
     {
+        var userId = int.Parse(claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        
         var watch = new JobWatch
         {
             Name = name,
@@ -35,16 +40,20 @@ public class Mutation
         return watch;
     }
 
+    [Authorize]
     public async Task<JobWatch?> UpdateWatch(
         int id,
         string? name,
         string? url,
         bool? isActive,
         int? checkIntervalMinutes,
+        ClaimsPrincipal claimsPrincipal,
         AppDbContext context)
     {
+        var userId = int.Parse(claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var watch = await context.JobWatches.FindAsync(id);
-        if (watch == null) return null;
+        
+        if (watch == null || watch.UserId != userId) return null;
 
         if (name != null) watch.Name = name;
         if (url != null) watch.Url = url;
@@ -55,30 +64,49 @@ public class Mutation
         return watch;
     }
 
-    public async Task<bool> DeleteWatch(int id, AppDbContext context)
+    [Authorize]
+    public async Task<bool> DeleteWatch(
+        int id,
+        ClaimsPrincipal claimsPrincipal,
+        AppDbContext context)
     {
+        var userId = int.Parse(claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var watch = await context.JobWatches.FindAsync(id);
-        if (watch == null) return false;
+        
+        if (watch == null || watch.UserId != userId) return false;
 
         context.JobWatches.Remove(watch);
         await context.SaveChangesAsync();
         return true;
     }
 
-    public async Task<Alert?> UpdateAlertStatus(int id, string status, AppDbContext context)
+    [Authorize]
+    public async Task<Alert?> UpdateAlertStatus(
+        int id,
+        string status,
+        ClaimsPrincipal claimsPrincipal,
+        AppDbContext context)
     {
+        var userId = int.Parse(claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var alert = await context.Alerts.FindAsync(id);
-        if (alert == null) return null;
+        
+        if (alert == null || alert.UserId != userId) return null;
 
         alert.Status = status;
         await context.SaveChangesAsync();
         return alert;
     }
 
-    public async Task<bool> DeleteJobPost(int id, AppDbContext context)
+    [Authorize]
+    public async Task<bool> DeleteJobPost(
+        int id,
+        ClaimsPrincipal claimsPrincipal,
+        AppDbContext context)
     {
+        var userId = int.Parse(claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)!.Value);
         var jobPost = await context.JobPosts.FindAsync(id);
-        if (jobPost == null) return false;
+        
+        if (jobPost == null || jobPost.Watch.UserId != userId) return false;
 
         context.JobPosts.Remove(jobPost);
         await context.SaveChangesAsync();
